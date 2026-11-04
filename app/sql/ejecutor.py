@@ -1,4 +1,4 @@
-"""Ejecuta SQL validado con el usuario de solo lectura.  ► SESIÓN 3 · TODO 4"""
+"""Ejecuta SQL validado con el usuario de solo lectura y arma texto para el LLM."""
 import psycopg
 
 from app import db
@@ -6,13 +6,25 @@ from app.sql import generador, validador
 
 
 def ejecutar(sql: str) -> list[dict]:
-    """Corre el SQL con el usuario asistente_lectura.  (Ya viene hecha.)"""
     with db.conectar(lectura=True) as con:
         return con.execute(sql).fetchall()
 
 
+def consultar(pregunta: str, reintentos: int = 1) -> dict:
+    """Pregunta -> SQL -> validar -> ejecutar; si falla, un reintento con el error como pista."""
+    sql, error = generador.generar_sql(pregunta), None
+    for intento in range(reintentos + 1):
+        try:
+            sql_ok = validador.validar(sql)
+            return {"sql": sql_ok, "filas": ejecutar(sql_ok)}
+        except (validador.SQLNoPermitido, psycopg.Error) as e:
+            error = str(e).strip().splitlines()[0]
+            if intento < reintentos:
+                sql = generador.generar_sql(pregunta, error_previo=error, sql_previo=sql)
+    return {"sql": sql, "filas": [], "error": error}
+
+
 def filas_a_texto(filas: list[dict], maximo: int = 30) -> str:
-    """Tabla en texto plano para dársela al LLM.  (Ya viene hecha.)"""
     if not filas:
         return "(sin resultados)"
     cols = list(filas[0].keys())
@@ -21,16 +33,3 @@ def filas_a_texto(filas: list[dict], maximo: int = 30) -> str:
     if len(filas) > maximo:
         lineas.append(f"... ({len(filas) - maximo} filas más)")
     return "\n".join(lineas)
-
-
-def consultar(pregunta: str, reintentos: int = 1) -> dict:
-    """Pregunta -> SQL -> validar -> ejecutar. Regresa {"sql", "filas"} o {"sql", "filas": [], "error"}.
-
-    TODO 4:
-      1. sql = generador.generar_sql(pregunta)
-      2. Intenta validador.validar(sql) y ejecutar(sql_validado).
-      3. Si falla (validador.SQLNoPermitido o psycopg.Error), repite hasta `reintentos` veces
-         pasándole al generador error_previo=<mensaje> y sql_previo=<sql fallido> (autocorrección).
-      4. Si sigue fallando, regresa el error en lugar de lanzar la excepción.
-    """
-    raise NotImplementedError("TODO 4: implementa consultar")

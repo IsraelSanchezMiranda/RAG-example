@@ -59,17 +59,28 @@ relaciones:
   - inventario.sucursal_id = sucursales.id
 
 metricas:
-  # ► SESIÓN 3 · TODO 1: define las métricas del negocio (nombre: fórmula SQL), por ejemplo
-  #   ventas_totales, utilidad, ticket_promedio. Así el LLM no tiene que adivinar qué es "venta".
-  {}
+  ventas_totales: SUM(detalle_venta.cantidad * detalle_venta.precio_unitario)
+  utilidad: SUM(detalle_venta.cantidad * (detalle_venta.precio_unitario - productos.costo_unitario))
+  ticket_promedio: ventas_totales dividido entre el número de ventas distintas
 
 sinonimos:
-  # TODO 1b: cómo le dice la gente a las cosas ("ingresos" -> ventas_totales, "tienda" -> sucursal…)
-  {}
+  ingresos: ventas_totales
+  facturación: ventas_totales
+  ganancia: utilidad
+  tienda: sucursal
+  artículo: producto
+  stock: inventario.existencias
 
 ejemplos:
-  # TODO 1c: 2 o 3 pares pregunta -> sql que le enseñen al LLM el estilo esperado.
-  # Formato:
-  #   - pregunta: ¿...?
-  #     sql: SELECT ...
-  []
+  - pregunta: ¿Cuáles son las ventas totales por sucursal?
+    sql: >
+      SELECT s.nombre, SUM(d.cantidad * d.precio_unitario) AS ventas_totales
+      FROM detalle_venta d JOIN ventas v ON v.id = d.venta_id
+      JOIN sucursales s ON s.id = v.sucursal_id
+      GROUP BY s.nombre ORDER BY ventas_totales DESC
+  - pregunta: ¿Qué productos están agotados en la sucursal de León?
+    sql: >
+      SELECT p.nombre FROM inventario i
+      JOIN productos p ON p.id = i.producto_id
+      JOIN sucursales s ON s.id = i.sucursal_id
+      WHERE s.ciudad = 'León' AND i.existencias = 0 ORDER BY p.nombre
