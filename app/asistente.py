@@ -1,5 +1,10 @@
 """Orquestador del asistente.
 
+PASO 3 (inicio): este archivo sigue siendo el de RAG. ► SESIÓN 3 · TODO 7: reescribe responder() para que haga
+  guardrails.revisar_entrada -> router.clasificar -> (ejecutor.consultar y/o recuperador.buscar
+  con guardrails.sanear_contexto) -> llm.chat -> guardrails.enmascarar_pii.
+  Devuelve siempre {"respuesta", "ruta", "sql", "fuentes"}.
+
 PASO 2: RAG. Busca fragmentos de los PDFs parecidos a la pregunta y se los da al LLM como contexto.
 Aún NO hay SQL (no sabe de ventas ni inventario) ni defensas (¡prueba preguntar por Hidráulica Manantial!).
 """

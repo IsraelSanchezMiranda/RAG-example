@@ -1,0 +1,75 @@
+# Capa semántica: le explica al LLM qué significan las tablas del negocio.
+# Es lo que convierte un LLM genérico en un "data steward" de ESTA base de datos.
+tablas:
+  ventas:
+    descripcion: Una fila por venta (ticket). El monto está en detalle_venta.
+    columnas:
+      id: Identificador de la venta
+      fecha: Fecha de la venta
+      cliente_id: Cliente que compró (ver clientes_publico)
+      sucursal_id: Sucursal donde se vendió (ver sucursales)
+      metodo_pago: efectivo, tarjeta, transferencia o crédito
+  detalle_venta:
+    descripcion: Una fila por producto vendido dentro de una venta.
+    columnas:
+      venta_id: Venta a la que pertenece
+      producto_id: Producto vendido
+      cantidad: Piezas vendidas
+      precio_unitario: Precio al que se vendió cada pieza (MXN)
+  productos:
+    descripcion: Catálogo de productos.
+    columnas:
+      sku: Código del producto
+      nombre: Nombre del producto
+      categoria: Tornillería, Pinturas, Eléctrico, Plomería, Herramientas o Maderas
+      proveedor_id: Proveedor del producto
+      precio_unitario: Precio de lista de venta (MXN)
+      costo_unitario: Costo de compra (MXN)
+  sucursales:
+    descripcion: Las 4 sucursales de la distribuidora.
+    columnas:
+      nombre: Nombre de la sucursal
+      ciudad: Ciudad
+  proveedores:
+    descripcion: Empresas que nos surten.
+    columnas:
+      nombre: Razón social
+      ciudad: Ciudad
+  inventario:
+    descripcion: Existencias de cada producto en cada sucursal.
+    columnas:
+      producto_id: Producto
+      sucursal_id: Sucursal
+      existencias: Piezas disponibles (0 = agotado)
+  clientes_publico:
+    descripcion: Clientes SIN datos personales (no hay correo ni teléfono).
+    columnas:
+      nombre: Nombre del cliente
+      tipo: empresa o persona
+      ciudad: Ciudad
+      limite_credito: Límite de crédito (MXN)
+
+relaciones:
+  - ventas.cliente_id = clientes_publico.id
+  - ventas.sucursal_id = sucursales.id
+  - detalle_venta.venta_id = ventas.id
+  - detalle_venta.producto_id = productos.id
+  - productos.proveedor_id = proveedores.id
+  - inventario.producto_id = productos.id
+  - inventario.sucursal_id = sucursales.id
+
+metricas:
+  # ► SESIÓN 3 · TODO 1: define las métricas del negocio (nombre: fórmula SQL), por ejemplo
+  #   ventas_totales, utilidad, ticket_promedio. Así el LLM no tiene que adivinar qué es "venta".
+  {}
+
+sinonimos:
+  # TODO 1b: cómo le dice la gente a las cosas ("ingresos" -> ventas_totales, "tienda" -> sucursal…)
+  {}
+
+ejemplos:
+  # TODO 1c: 2 o 3 pares pregunta -> sql que le enseñen al LLM el estilo esperado.
+  # Formato:
+  #   - pregunta: ¿...?
+  #     sql: SELECT ...
+  []
