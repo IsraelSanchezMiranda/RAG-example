@@ -1,0 +1,52 @@
+# Levanta Postgres+pgvector, la API y la UI. Ollama puede ser el de tu máquina o uno en contenedor.
+#   Ollama del anfitrión (por defecto):   docker compose up --build
+#   Ollama en contenedor:                 docker compose --profile ollama up --build
+#                                         (y OLLAMA_URL=http://ollama:11434 en .env.docker o en el shell)
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: distribuidora
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro   # corre 01, 02 y 03 solo la primera vez
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d distribuidora"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/distribuidora
+      DATABASE_URL_LECTURA: postgresql://asistente_lectura:lectura123@db:5432/distribuidora
+      OLLAMA_HOST: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:1.5b}
+      EMBED_MODEL: ${EMBED_MODEL:-paraphrase-multilingual}
+    extra_hosts: ["host.docker.internal:host-gateway"]   # necesario en Linux
+    volumes: [".:/code"]
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  ui:
+    build: .
+    command: streamlit run ui/streamlit_app.py --server.address 0.0.0.0 --server.port 8501
+    environment:
+      API_URL: http://api:8000
+    volumes: [".:/code"]
+    ports: ["8501:8501"]
+    depends_on: [api]
+
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    ports: ["11434:11434"]
+    volumes: [ollama:/root/.ollama]
+
+volumes:
+  pgdata:
+  ollama:
