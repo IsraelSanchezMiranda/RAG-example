@@ -1,20 +1,19 @@
 """Orquestador del asistente.
 
-PASO 2 (inicio): ya existe el módulo de RAG, pero el asistente todavía no lo usa.
-► SESIÓN 2 · TODO 4: en responder(), busca fragmentos con recuperador.buscar(pregunta),
-  arma un prompt con ese contexto, pídele al LLM que conteste SOLO con él, y regresa las fuentes.
+PASO 2: RAG. Busca fragmentos de los PDFs parecidos a la pregunta y se los da al LLM como contexto.
+Aún NO hay SQL (no sabe de ventas ni inventario) ni defensas (¡prueba preguntar por Hidráulica Manantial!).
 """
 from app import llm
+from app.rag import recuperador
 
-SISTEMA = ("Eres el asistente de datos de Distribuidora del Bajío. Responde en español, breve y preciso.")
+SISTEMA = ("Eres el asistente de datos de Distribuidora del Bajío. Responde en español, breve y preciso, "
+           "usando SOLO el contexto dado. Si el contexto no alcanza, di que no tienes esa información.")
 
 
 def responder(pregunta: str) -> dict:
-    # TODO 4: reemplaza esto por RAG.
-    #   - chunks = recuperador.buscar(pregunta)
-    #   - contexto = los chunks unidos, cada uno con el nombre de su documento
-    #   - SISTEMA debe decir: "usa SOLO el contexto; si no alcanza, di que no tienes esa información"
-    #   - "fuentes": lista de "documento (p. N)" sin repetir
+    chunks = recuperador.buscar(pregunta)
+    fuentes = sorted({f"{c['documento']} (p. {c['pagina']})" for c in chunks})
+    contexto = "\n---\n".join(f"[{c['documento']}] {c['contenido']}" for c in chunks) or "(sin documentos relevantes)"
     texto = llm.chat([{"role": "system", "content": SISTEMA},
-                      {"role": "user", "content": pregunta}])
-    return {"respuesta": texto, "ruta": "solo_llm", "sql": None, "fuentes": []}
+                      {"role": "user", "content": f"FRAGMENTOS DE DOCUMENTOS:\n{contexto}\n\nPREGUNTA: {pregunta}"}])
+    return {"respuesta": texto, "ruta": "documentos", "sql": None, "fuentes": fuentes}
